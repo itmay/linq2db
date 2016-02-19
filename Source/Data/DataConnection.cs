@@ -19,6 +19,8 @@ namespace LinqToDB.Data
 
 	public partial class DataConnection : ICloneable
 	{
+	    private bool _isDisposed;
+
 		#region .ctor
 
 		public DataConnection() : this(null)
@@ -492,6 +494,11 @@ namespace LinqToDB.Data
 		{
 			get
 			{
+			    if (_isDisposed)
+			    {
+			        throw new ObjectDisposedException("DataConnection");
+			    }
+
 				if (_connection == null)
 					_connection = DataProvider.CreateConnection(ConnectionString);
 
@@ -891,6 +898,8 @@ namespace LinqToDB.Data
 		public void Dispose()
 		{
 			Close();
+
+		    _isDisposed = true;
 		}
 
 		#endregion
