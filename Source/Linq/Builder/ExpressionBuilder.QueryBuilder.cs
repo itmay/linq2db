@@ -557,9 +557,22 @@ namespace LinqToDB.Linq.Builder
 											var field1 = table.ParentAssociation.SqlTable.Fields[table.Association.ThisKey [i]];
 											var field2 = table.                  SqlTable.Fields[table.Association.OtherKey[i]];
 
-											var ee = Expression.Equal(
-												Expression.MakeMemberAccess(op,            field2.ColumnDescriptor.MemberInfo),
-												Expression.MakeMemberAccess(me.Expression, field1.ColumnDescriptor.MemberInfo));
+										    Expression left = Expression.MakeMemberAccess(op, field2.ColumnDescriptor.MemberInfo);
+                                            Expression right = Expression.MakeMemberAccess(me.Expression, field1.ColumnDescriptor.MemberInfo);
+
+										    var leftIsNullable = left.Type.IsNullable();
+										    var rightIsNullable = right.Type.IsNullable();
+
+										    if (leftIsNullable && !rightIsNullable)
+										    {
+										        right = Expression.Convert(right, left.Type);
+										    }
+                                            else if (rightIsNullable && !leftIsNullable)
+                                            {
+                                                left = Expression.Convert(left, right.Type);
+                                            }
+
+											var ee = Expression.Equal(left, right);
 
 											ex = ex == null ? ee : Expression.AndAlso(ex, ee);
 										}
