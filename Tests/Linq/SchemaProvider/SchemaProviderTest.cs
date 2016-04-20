@@ -41,7 +41,7 @@ namespace Tests.SchemaProvider
 					case ProviderName.SqlServer2008 :
 					case ProviderName.SqlServer2012 :
 					case ProviderName.SqlServer2014 :
-					case "SqlAzure.2012"            :
+					case TestProvName.SqlAzure      :
 						{
 							var indexTable = dbSchema.Tables.Single(t => t.TableName == "IndexTable");
 							Assert.That(indexTable.ForeignKeys.Count,                Is.EqualTo(1));
@@ -63,7 +63,7 @@ namespace Tests.SchemaProvider
 					case ProviderName.SqlServer2008 :
 					case ProviderName.SqlServer2012 :
 					case ProviderName.SqlServer2014 :
-					case "SqlAzure.2012"            :
+					case TestProvName.SqlAzure      :
 						{
 							var tbl = dbSchema.Tables.Single(at => at.TableName == "AllTypes");
 							var col = tbl.Columns.First(c => c.ColumnName == "datetimeoffset3DataType");
@@ -87,7 +87,7 @@ namespace Tests.SchemaProvider
 			}
 		}
 
-		[Test, IncludeDataContextSource(ProviderName.MySql)]
+		[Test, IncludeDataContextSource(ProviderName.MySql, TestProvName.MariaDB)]
 		public void MySqlTest(string context)
 		{
 			using (var conn = new DataConnection(context))
@@ -103,6 +103,20 @@ namespace Tests.SchemaProvider
 				var view = dbSchema.Tables.Single(t => t.TableName == "personview");
 
 				Assert.That(view.Columns.Count, Is.EqualTo(1));
+			}
+		}
+
+		[Test, IncludeDataContextSource(ProviderName.MySql, TestProvName.MariaDB)]
+		public void MySqlPKTest(string context)
+		{
+			using (var conn = new DataConnection(context))
+			{
+				var sp       = conn.DataProvider.GetSchemaProvider();
+				var dbSchema = sp.GetSchema(conn);
+				var table    = dbSchema.Tables.Single(t => t.TableName == "person");
+				var pk       = table.Columns.FirstOrDefault(t => t.IsPrimaryKey);
+
+				Assert.That(pk, Is.Not.Null);
 			}
 		}
 
@@ -129,6 +143,20 @@ namespace Tests.SchemaProvider
 				Assert.That(table.Columns[1].PrimaryKeyOrder, Is.EqualTo(2));
 
 				conn.DropTable<PKTest>();
+			}
+		}
+
+		[Test, IncludeDataContextSource(ProviderName.DB2)]
+		public void DB2Test(string context)
+		{
+			using (var conn = new DataConnection(context))
+			{
+				var sp       = conn.DataProvider.GetSchemaProvider();
+				var dbSchema = sp.GetSchema(conn);
+				var table    = dbSchema.Tables.Single(t => t.TableName == "ALLTYPES");
+
+				Assert.That(table.Columns.Single(c => c.ColumnName == "BINARYDATATYPE").   ColumnType, Is.EqualTo("CHAR (5) FOR BIT DATA"));
+				Assert.That(table.Columns.Single(c => c.ColumnName == "VARBINARYDATATYPE").ColumnType, Is.EqualTo("VARCHAR (5) FOR BIT DATA"));
 			}
 		}
 	}

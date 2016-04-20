@@ -297,6 +297,15 @@ namespace LinqToDB.Extensions
 #endif
 		}
 
+		public static bool IsMethodEx(this MemberInfo memberInfo)
+		{
+#if NETFX_CORE
+			return memberInfo is MethodInfo;
+#else
+			return memberInfo.MemberType == MemberTypes.Method;
+#endif
+		}
+
 		public static object[] GetCustomAttributesEx(this MemberInfo memberInfo, Type attributeType, bool inherit)
 		{
 #if NETFX_CORE
@@ -1025,7 +1034,7 @@ namespace LinqToDB.Extensions
 				member.DeclaringType.GetGenericTypeDefinition() == typeof(Nullable<>);
 		}
 
-		static Dictionary<Type,HashSet<Type>> _castDic = new Dictionary<Type,HashSet<Type>>
+		static readonly Dictionary<Type,HashSet<Type>> _castDic = new Dictionary<Type,HashSet<Type>>
 		{
 			{ typeof(decimal), new HashSet<Type> { typeof(sbyte), typeof(byte),   typeof(short), typeof(ushort), typeof(int), typeof(uint), typeof(long), typeof(ulong), typeof(char)                } },
 			{ typeof(double),  new HashSet<Type> { typeof(sbyte), typeof(byte),   typeof(short), typeof(ushort), typeof(int), typeof(uint), typeof(long), typeof(ulong), typeof(char), typeof(float) } },
@@ -1069,7 +1078,7 @@ namespace LinqToDB.Extensions
 			return false;
 		}
 
-		public static bool EqualsTo(this MemberInfo member1, MemberInfo member2, Type declaringType = null	)
+		public static bool EqualsTo(this MemberInfo member1, MemberInfo member2, Type declaringType = null)
 		{
 			if (ReferenceEquals(member1, member2))
 				return true;

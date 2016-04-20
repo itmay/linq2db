@@ -6,6 +6,10 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
+#if !SILVERLIGHT && !NETFX_CORE
+using System.Data.SqlTypes;
+#endif
+
 using JetBrains.Annotations;
 
 #region ReSharper disables
@@ -342,7 +346,7 @@ namespace LinqToDB.Linq
 		{
 			public void SetInfo(MappingSchema mappingSchema)
 			{
-				if (!typeof(T).IsClassEx() && !typeof(T).IsNullable())
+				if (!typeof(T).IsClassEx() && !typeof(T).IsInterfaceEx() && !typeof(T).IsNullable())
 				{
 					var gtype    = typeof(GetValueOrDefaultExpressionInfo<>).MakeGenericType(typeof(T));
 					var provider = (ISetInfo)Activator.CreateInstance(gtype);
@@ -959,6 +963,17 @@ namespace LinqToDB.Linq
 
 					#endregion
 
+					#region SqlTypes
+
+#if !SILVERLIGHT && !NETFX_CORE
+					{ M(() => new SqlBoolean().Value),   N(() => L<SqlBoolean,bool>((SqlBoolean obj) => (bool)obj))          },
+					{ M(() => new SqlBoolean().IsFalse), N(() => L<SqlBoolean,bool>((SqlBoolean obj) => (bool)obj == false)) },
+					{ M(() => new SqlBoolean().IsTrue),  N(() => L<SqlBoolean,bool>((SqlBoolean obj) => (bool)obj == true))  },
+					{ M(() => SqlBoolean.True),          N(() => L<bool>           (()               => true))  },
+					{ M(() => SqlBoolean.False),         N(() => L<bool>           (()               => false)) },
+#endif
+
+					#endregion
 				}},
 
 				#region SqlServer

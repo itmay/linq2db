@@ -27,7 +27,9 @@ namespace Tests.DataProvider
 		class SqlServerDataContextAttribute : IncludeDataContextSourceAttribute
 		{
 			public SqlServerDataContextAttribute()
-				: base(ProviderName.SqlServer2000, ProviderName.SqlServer2005, ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, "SqlAzure.2012")
+				: base(
+					ProviderName.SqlServer2000, ProviderName.SqlServer2005, ProviderName.SqlServer2008,
+					ProviderName.SqlServer2012, ProviderName.SqlServer2014, TestProvName.SqlAzure)
 			{
 			}
 		}
@@ -95,7 +97,7 @@ namespace Tests.DataProvider
 			}
 		}
 
-		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, "SqlAzure.2012")]
+		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, TestProvName.SqlAzure)]
 		public void TestDataTypes2(string context)
 		{
 			using (var conn = new DataConnection(context))
@@ -208,7 +210,7 @@ namespace Tests.DataProvider
 			}
 		}
 
-		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, "SqlAzure.2012")]
+		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, TestProvName.SqlAzure)]
 		public void TestDate(string context)
 		{
 			using (var conn = new DataConnection(context))
@@ -253,7 +255,7 @@ namespace Tests.DataProvider
 			}
 		}
 
-		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, "SqlAzure.2012")]
+		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, TestProvName.SqlAzure)]
 		public void TestDateTime2(string context)
 		{
 			using (var conn = new DataConnection(context))
@@ -269,7 +271,7 @@ namespace Tests.DataProvider
 			}
 		}
 
-		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, "SqlAzure.2012")]
+		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, TestProvName.SqlAzure)]
 		public void TestDateTimeOffset(string context)
 		{
 			using (var conn = new DataConnection(context))
@@ -315,7 +317,7 @@ namespace Tests.DataProvider
 			}
 		}
 
-		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, "SqlAzure.2012")]
+		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, TestProvName.SqlAzure)]
 		public void TestTimeSpan(string context)
 		{
 			using (var conn = new DataConnection(context))
@@ -559,7 +561,7 @@ namespace Tests.DataProvider
 			}
 		}
 
-		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, "SqlAzure.2012")]
+		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, TestProvName.SqlAzure)]
 		public void TestHierarchyID(string context)
 		{
 			using (var conn = new DataConnection(context))
@@ -575,7 +577,7 @@ namespace Tests.DataProvider
 			}
 		}
 
-		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, "SqlAzure.2012")]
+		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, TestProvName.SqlAzure)]
 		public void TestGeometry(string context)
 		{
 			using (var conn = new DataConnection(context))
@@ -594,7 +596,7 @@ namespace Tests.DataProvider
 			}
 		}
 
-		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, "SqlAzure.2012")]
+		[Test, IncludeDataContextSource(ProviderName.SqlServer2008, ProviderName.SqlServer2012, ProviderName.SqlServer2014, TestProvName.SqlAzure)]
 		public void TestGeography(string context)
 		{
 			using (var conn = new DataConnection(context))
@@ -865,36 +867,46 @@ namespace Tests.DataProvider
 			#endregion
 		};
 
-		[Test, SqlServerDataContext]
-		public void BulkCopyAllTypes(string context)
+		void BulkCopyAllTypes(string context, BulkCopyType bulkCopyType)
 		{
-			foreach (var bulkCopyType in new[] { BulkCopyType.MultipleRows, BulkCopyType.ProviderSpecific })
+			using (var db = new DataConnection(context))
 			{
-				using (var db = new DataConnection(context))
-				{
-					db.GetTable<AllTypes>().Delete(p => p.ID >= _allTypeses[0].ID);
+				db.CommandTimeout = 60;
 
-					db.BulkCopy(
-						new BulkCopyOptions
-						{
-							BulkCopyType       = bulkCopyType,
-							RowsCopiedCallback = copied => Debug.WriteLine(copied.RowsCopied),
-							KeepIdentity       = true,
-						},
-						_allTypeses);
+				db.GetTable<AllTypes>().Delete(p => p.ID >= _allTypeses[0].ID);
 
-					var ids = _allTypeses.Select(at => at.ID).ToArray();
+				db.BulkCopy(
+					new BulkCopyOptions
+					{
+						BulkCopyType       = bulkCopyType,
+						RowsCopiedCallback = copied => Debug.WriteLine(copied.RowsCopied),
+						KeepIdentity       = true,
+					},
+					_allTypeses);
 
-					var list = db.GetTable<AllTypes>().Where(t => ids.Contains(t.ID)).OrderBy(t => t.ID).ToList();
+				var ids = _allTypeses.Select(at => at.ID).ToArray();
 
-					db.GetTable<AllTypes>().Delete(p => p.ID >= _allTypeses[0].ID);
+				var list = db.GetTable<AllTypes>().Where(t => ids.Contains(t.ID)).OrderBy(t => t.ID).ToList();
 
-					Assert.That(list.Count, Is.EqualTo(_allTypeses.Length));
+				db.GetTable<AllTypes>().Delete(p => p.ID >= _allTypeses[0].ID);
 
-					for (var i = 0; i < list.Count; i++)
-						CompareObject(db.MappingSchema, list[i], _allTypeses[i]);
-				}
+				Assert.That(list.Count, Is.EqualTo(_allTypeses.Length));
+
+				for (var i = 0; i < list.Count; i++)
+					CompareObject(db.MappingSchema, list[i], _allTypeses[i]);
 			}
+		}
+
+		[Test, SqlServerDataContext]
+		public void BulkCopyAllTypesMultipleRows(string context)
+		{
+			BulkCopyAllTypes(context, BulkCopyType.MultipleRows);
+		}
+
+		[Test, SqlServerDataContext]
+		public void BulkCopyAllTypesProviderSpecific(string context)
+		{
+			BulkCopyAllTypes(context, BulkCopyType.ProviderSpecific);
 		}
 
 		void CompareObject<T>(MappingSchema mappingSchema, T actual, T test)

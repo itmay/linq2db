@@ -26,6 +26,8 @@ namespace Tests
 	{
 		static TestBase()
 		{
+			Console.WriteLine("Tests started in {0}...", Environment.CurrentDirectory);
+
 			var traceCount = 0;
 
 			DataConnection.TurnTraceSwitchOn();
@@ -51,7 +53,7 @@ namespace Tests
 					Path.Combine(assemblyPath, @"..\..\UserDataProviders.txt") :
 					Path.Combine(assemblyPath, @"..\..\DefaultDataProviders.txt");
 
-			_userProviders =
+			UserProviders =
 				File.ReadAllLines(providerListFile)
 					.Select(s => s.Trim())
 					.Where (s => s.Length > 0 && !s.StartsWith("--"))
@@ -76,7 +78,7 @@ namespace Tests
 
 			//DataConnection.SetConnectionStrings(config);
 
-			foreach (var provider in _userProviders.Values)
+			foreach (var provider in UserProviders.Values)
 				if (provider.ConnectionString != null)
 					DataConnection.SetConnectionString(provider.Name, provider.ConnectionString);
 
@@ -131,9 +133,9 @@ namespace Tests
 			public string ConnectionString;
 		}
 
-		static readonly Dictionary<string,UserProviderInfo> _userProviders;
+		internal static readonly Dictionary<string,UserProviderInfo> UserProviders;
 
-		static readonly List<string>                        _providers     = new List<string>
+		static readonly List<string> _providers = new List<string>
 		{
 			ProviderName.SqlServer2008,
 			ProviderName.SqlServer2012,
@@ -146,12 +148,14 @@ namespace Tests
 			ProviderName.DB2,
 			ProviderName.Informix,
 			ProviderName.Firebird,
-			ProviderName.Oracle,
+			ProviderName.OracleNative,
+			ProviderName.OracleManaged,
 			ProviderName.PostgreSQL,
 			ProviderName.MySql,
 			ProviderName.Sybase,
 			ProviderName.SapHana,
-			"SqlAzure.2012"
+			TestProvName.SqlAzure,
+			TestProvName.MariaDB,
 		};
 
 		[AttributeUsage(AttributeTargets.Method)]
@@ -166,37 +170,52 @@ namespace Tests
 			readonly bool     _includeLinqService;
 			readonly string[] _providerNames;
 
-			void SetName(TestMethod test, IMethodInfo method, string provider, bool isLinqService)
+			static void SetName(TestMethod test, IMethodInfo method, string provider, bool isLinqService)
 			{
-
 				var name = method.Name + "." + provider;
 
 				if (isLinqService)
 					name += ".LinqService";
 
-				test.Name     = method.TypeInfo.FullName.Replace("Tests.", "") + "." + name;
-				//test.FullName = test.Name;
+				test.Name = method.TypeInfo.FullName.Replace("Tests.", "") + "." + name;
 			}
 
 			public IEnumerable<TestMethod> BuildFrom(IMethodInfo method, Test suite)
 			{
+				var explic = method.GetCustomAttributes<ExplicitAttribute>(true)
+					.Cast<IApplyToTest>()
+					.Union(method.GetCustomAttributes<IgnoreAttribute>(true))
+					.ToList();
+
 				var builder = new NUnitTestCaseBuilder();
+
+				TestMethod test = null;
+				var hasTest = false;
 
 				foreach (var provider in _providerNames)
 				{
-					var isIgnore = !_userProviders.ContainsKey(provider);
+					var isIgnore = !UserProviders.ContainsKey(provider);
 
 					var data = new TestCaseParameters(new object[] { provider });
-					var test = builder.BuildTestMethod(method, suite, data);
+
+					test = builder.BuildTestMethod(method, suite, data);
+
+					foreach (var attr in explic)
+						attr.ApplyToTest(test);
 
 					test.Properties.Set(PropertyNames.Category, provider);
 					SetName(test, method, provider, false);
 
 					if (isIgnore)
 					{
-						test.RunState = RunState.Ignored;
+						if (test.RunState != RunState.NotRunnable && test.RunState != RunState.Explicit)
+							test.RunState = RunState.Ignored;
+
 						test.Properties.Set(PropertyNames.SkipReason, "Provider is disabled. See UserDataProviders.txt");
+						continue;
 					}
+
+					hasTest = true;
 
 					yield return test;
 
@@ -205,18 +224,18 @@ namespace Tests
 						data = new TestCaseParameters(new object[] { provider + ".LinqService" });
 						test = builder.BuildTestMethod(method, suite, data);
 
+						foreach (var attr in explic)
+							attr.ApplyToTest(test);
+
 						test.Properties.Set(PropertyNames.Category, provider);
 						SetName(test, method, provider, true);
-
-						if (isIgnore)
-						{
-							test.RunState = RunState.Ignored;
-							test.Properties.Set(PropertyNames.SkipReason, "Provider is disabled. See UserDataProviders.txt");
-						}
 
 						yield return test;
 					}
 				}
+
+				if (!hasTest)
+					yield return test;
 			}
 		}
 
@@ -503,7 +522,7 @@ namespace Tests
 			}
 		}
 
-		protected List<Child> _child;
+		protected        List<Child> _child;
 		protected IEnumerable<Child>  Child
 		{
 			get
@@ -524,7 +543,8 @@ namespace Tests
 						}
 					}
 
-				return _child;
+				foreach (var item in _child)
+					yield return item;
 			}
 		}
 
